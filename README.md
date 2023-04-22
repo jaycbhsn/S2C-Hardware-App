@@ -1,4 +1,4 @@
-# S2C-Hardware-App
+# S2C Hardware App
 
 A Text to Speech app which runs on Linux x86 and ARM systems (such as Raspberry Pi).
 
