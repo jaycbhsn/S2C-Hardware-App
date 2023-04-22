@@ -16,7 +16,7 @@ Once the requirements are installed, hollow the instructions for the most up to 
 [Current Release](https://github.com/jaycbhsn/S2C-Hardware-App/releases/latest)
 
 
-If you choose to use a different TTS engine such as Espeak (not recommended), use the flag '--default_tts' and install espeak on your OS with:
+_If you choose to use a different TTS engine such as Espeak (not recommended), use the flag '--default_tts' and install espeak on your OS with:_
 ```
 apt-get install espeak -y
 ```
