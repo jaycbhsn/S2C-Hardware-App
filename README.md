@@ -12,6 +12,7 @@ pip install -r requirements.txt
 ```
 
 Once the requirements are installed, hollow the instructions for the most up to date release or an older release if you prefer:
+
 [Current Release](https://github.com/jaycbhsn/S2C-Hardware-App/releases/latest)
 
 
