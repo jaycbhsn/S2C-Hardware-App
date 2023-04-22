@@ -16,5 +16,5 @@ Once the requirements are installed
 
 If you choose to use a different TTS engine such as Espeak (not recommended), use the flag '--default_tts' and install espeak on your OS with:
 ```
-sudo apt-get install espeak
+apt-get install espeak -y
 ```
