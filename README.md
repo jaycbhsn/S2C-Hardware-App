@@ -4,7 +4,8 @@ A Text to Speech app which runs on Linux x86 and ARM systems (such as Raspberry 
 
 TTS Engine provided by Piper: https://github.com/rhasspy/piper
 
-INSTALLATION:
+**INSTALLATION:**
+
 First, install the required packages in pip, and run this on Python 3.7 or later (This was built on Python 3.10):
 ```
 wget https://github.com/jaycbhsn/S2C-Hardware-App/raw/main/requirements.txt
