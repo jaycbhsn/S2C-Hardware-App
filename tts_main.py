@@ -135,11 +135,11 @@ if USE_DEFAULT_TTS:
 
 else:
     voice_id = 0
-    voices = [
-        ("Male", "en-us-ryan-high.onnx"),
-        ("Female", "en-us-libritts-high.onnx")
-    ]
-
+    with open("voices/avaliable_voices.txt", "r") as f:
+        lines = f.readlines()
+    
+    voices = [tuple(line.strip().split(":")) for line in lines]
+    
     # Define a function to update the displayed settings
     def update_settings():
         voice_label.config(text=f"Voice: {voices[voice_id][0]}")
