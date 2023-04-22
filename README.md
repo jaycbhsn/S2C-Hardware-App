@@ -11,7 +11,8 @@ wget https://github.com/jaycbhsn/S2C-Hardware-App/raw/main/requirements.txt
 pip install -r requirements.txt
 ```
 
-Once the requirements are installed
+Once the requirements are installed, hollow the instructions for the most up to date release or an older release if you prefer:
+[Current Release](https://github.com/jaycbhsn/S2C-Hardware-App/releases/latest)
 
 
 If you choose to use a different TTS engine such as Espeak (not recommended), use the flag '--default_tts' and install espeak on your OS with:
