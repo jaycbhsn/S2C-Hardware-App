@@ -1,9 +1,9 @@
-import tkinter as tk
 import tkinter.simpledialog as sd
+import tkinter as tk
 from playsound import playsound
-import argparse
 import subprocess
 import datetime
+import argparse
 import re
 import os
 
@@ -36,9 +36,17 @@ modes = [
     "Chess"
 ]
 
+# Check if important directories do not exist
+if not os.path.exists('export_audio'):
+    os.makedirs('export_audio')
+
+if not os.path.exists('export_text'):
+    os.makedirs('export_text')
+
 # Define functions to increment or decrement the settings based on keyboard shortcuts
 if USE_DEFAULT_TTS:
     import pyttsx3
+
     engine = pyttsx3.init()
 
     # Set the initial values for volume, rate, and voice
@@ -137,11 +145,16 @@ if USE_DEFAULT_TTS:
         Ctrl + C: Decrement Voice (backward)
         Ctrl + M: Increment Mode
         Ctrl + P: Play All Text
+        Ctrl + O: Export Text
         Ctrl + Backspace/Delete: Exit Program
         Ctrl + H: Display this help text"""
         sd.messagebox.showinfo("Help", help_text)
 
 else:
+    if not os.path.exists('voices'):
+        print("Error: \'voices\' could not be found.\nYou do not have any voices installed.\nMake sure to follow the installation instructions or use \'--default_tts\' if you have Espeak installed.")
+        exit(0)
+
     voice_id = 0
     with open("voices/avaliable_voices.txt", "r") as f:
         lines = f.readlines()
@@ -195,6 +208,7 @@ else:
     Ctrl + C: Decrement Voice (backward)
     Ctrl + M: Increment Mode
     Ctrl + P: Play All Text
+    Ctrl + O: Export Text
     Ctrl + Backspace/Delete: Exit Program
     Ctrl + H: Display this help text"""
         sd.messagebox.showinfo("Help", help_text)
@@ -227,11 +241,9 @@ def play_tts(text, isFull):
         engine.say(text)
         engine.runAndWait()
     else:
-        audio = "FULL_" if isFull else ""
-        if FORGET_AUDIO:
-            audio += "audio.wav"
-        else:
-            audio += datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S_audio.wav")
+        audio = "export_audio/" 
+        audio += "FULL_" if isFull else ""
+        audio += datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S_audio.wav") if not FORGET_AUDIO else "audio.wav"
         
         command = f"echo \'{text}\' | ./piper" 
         command += "_arm" if IS_ARM else ""
@@ -252,6 +264,11 @@ def exit_app(event):
 def play_all_text(event):
     play_tts(text_box.get("1.0", "end-1c"), True)
 
+def export_text(event):
+    with open(datetime.datetime.now().strftime("export_text/%Y-%m-%d_%H:%M:%S_text.txt"), "w") as f:
+        f.write(text_box.get("1.0", "end-1c"))
+    f.close()
+
 def toggle_status():
     global STATUS_TOGGLE
     STATUS_TOGGLE = not STATUS_TOGGLE
@@ -265,25 +282,44 @@ def decimal_to_integer(number):
     return int(str(number).split('.')[1])
 
 def delete_old_wav_files(): # Remove them if older than X weeks
+    export_audio_dir = os.path.join(os.getcwd(), 'export_audio')
+
     if DAYS_TO_KEEP <= 0: # If invalid, delete all
-        for file_name in os.listdir('.'):
+        for file_name in os.listdir(export_audio_dir):
             if file_name.endswith('.wav'):
-                file_path = os.path.join(os.getcwd(), file_name)
+                file_path = os.path.join(export_audio_dir, file_name)
                 os.remove(file_path)
     else:
-        current_time = datetime.datetime.now()
-        normal_days_keep = current_time - datetime.timedelta(days=DAYS_TO_KEEP)
+        normal_days_keep = datetime.datetime.now() - datetime.timedelta(days=DAYS_TO_KEEP)
         fullMultiplier = 1
 
-        for file_name in os.listdir('.'):
+        for file_name in os.listdir(export_audio_dir):
             if file_name.endswith('.wav'):
                 if file_name.startswith('FULL'):
                     fullMultiplier = 2
                 
-                file_path = os.path.join(os.getcwd(), file_name)
+                file_path = os.path.join(export_audio_dir, file_name)
                 file_modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
                 if file_modified_time < normal_days_keep * fullMultiplier:
                     os.remove(file_path)
+
+def delete_old_text_files(): # Remove them if older than X weeks
+    export_text_dir = os.path.join(os.getcwd(), 'export_text')
+    if DAYS_TO_KEEP <= 0: # If invalid, delete all
+        for file_name in os.listdir(export_text_dir):
+            if file_name.endswith('.txt'):
+                file_path = os.path.join(export_text_dir, file_name)
+                os.remove(file_path)
+    else:
+        normal_days_keep = datetime.datetime.now() - datetime.timedelta(days=DAYS_TO_KEEP)
+
+        for file_name in os.listdir(export_text_dir):
+            if file_name.endswith('.txt'):  
+                file_path = os.path.join(export_text_dir, file_name)
+                file_modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
+                if file_modified_time < normal_days_keep:
+                    os.remove(file_path)
+
 
 # Define a function to handle key presses
 def on_key_press(event):
@@ -323,8 +359,6 @@ def on_key_press(event):
         if printDebug:
             print("Current SPEECH_TEXT: ", SPEECH_TEXT)
 
-delete_old_wav_files()
-
 # Create the main window, and initialize sound
 root = tk.Tk()
 
@@ -348,6 +382,8 @@ help_label = tk.Label(settings_frame, bg=BAR_COLOR,fg=TEXT_COLOR, text="Ctrl + H
 
 update_settings()
 toggle_status()
+delete_old_wav_files()
+delete_old_text_files()
 
 # Pack the labels into the settings frame
 volume_label.pack(side=tk.LEFT)
@@ -367,10 +403,10 @@ root.bind("<Control-KeyPress-c>", decrement_voice)
 root.bind("<Control-KeyPress-m>", increment_mode)
 root.bind("<Control-KeyPress-p>", play_all_text)
 root.bind("<Control-KeyPress-q>", clear_text)
+root.bind("<Control-KeyPress-o>", export_text)
 root.bind("<Control-h>", lambda event: display_help())
 root.bind("<Control-BackSpace>", exit_app)
 root.bind("<Control-Delete>", exit_app)
-
 
 # Bind the key press event to the text box
 text_box.bind("<Key>", on_key_press)
