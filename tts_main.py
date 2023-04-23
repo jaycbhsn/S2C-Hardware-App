@@ -16,9 +16,11 @@ SPEECH_TEXT = ""
 FONT_SIZE = 24
 BAR_COLOR = '#0098fc'
 STATUS_TEXT_COLOR_GO = '#1fff0f'
-STATUS_TEXT_COLOR_STOP = '#ff2d0d'
+STATUS_TEXT_COLOR_STOP = '#fc444a'
 TEXT_COLOR = 'white'
 STATUS_TOGGLE = True
+
+badChars = ["Left", "Right", "Up", "Down"]
 
 # Used to give context from text
 mode_id = 0
@@ -228,6 +230,7 @@ def play_tts(text):
     toggle_status()
 
 def clear_text(event):
+    SPEECH_TEXT = ''
     text_box.delete(1.0, tk.END)
 
 def exit_app(event):
@@ -245,21 +248,46 @@ def toggle_status():
         status_label.config(fg=STATUS_TEXT_COLOR_STOP, text=' STOP')
     settings_frame.update()
 
+def decimal_to_integer(number):
+    return int(str(number).split('.')[1])
+
 # Define a function to handle key presses
 def on_key_press(event):
     global SPEECH_TEXT
-    # Capture the text from the key press and add it to the text box
-    if not (event.state & 0x4):
-        if event.keysym == 'BackSpace':
-            SPEECH_TEXT = SPEECH_TEXT[:-1] # Remove the last character from SPEECH_TEXT
-        else:
-            text = event.char
-            print("Key pressed:", text)
-            SPEECH_TEXT += text
+    printDebug = True
 
-            if text in [",", ".", "?", "!"]:
-                play_tts(SPEECH_TEXT)
-                SPEECH_TEXT = ''
+    # Capture the text from the key press and add it to the text box
+    if not (event.state & 0x4): # If control is not being pressed
+        cursor_pos = decimal_to_integer(text_box.index(tk.INSERT))
+        text = event.char
+
+        if text == '\x08': # Handle Backspaces for the current line
+            if SPEECH_TEXT != '' and cursor_pos > 0:
+                SPEECH_TEXT = SPEECH_TEXT[:cursor_pos-1] + SPEECH_TEXT[cursor_pos:] 
+                print("Removed character at Position: ", cursor_pos)
+
+        elif text == '\x7f': # Handle Delete for the current line
+            if SPEECH_TEXT != '' and cursor_pos < len(SPEECH_TEXT) - 1:
+                SPEECH_TEXT = SPEECH_TEXT[:cursor_pos] + SPEECH_TEXT[cursor_pos+1:]
+                print("Removed character at Position: ", cursor_pos)
+
+        else: # Handle other keys
+            if event.keysym not in badChars:
+                print("Key pressed:", text)
+                if cursor_pos != len(SPEECH_TEXT): 
+                    SPEECH_TEXT = SPEECH_TEXT[:cursor_pos] + text + SPEECH_TEXT[cursor_pos:]
+                else:
+                    SPEECH_TEXT += text
+                
+                # Play audio if termination of line character found
+                if text in [",", ".", "?", "!"]:
+                    play_tts(SPEECH_TEXT)
+                    SPEECH_TEXT = ''
+            else:
+                printDebug = False
+        
+        if printDebug:
+            print("Current SPEECH_TEXT: ", SPEECH_TEXT)
 
 # Create the main window, and initialize sound
 root = tk.Tk()
@@ -314,6 +342,5 @@ text_box.bind("<Key>", on_key_press)
 # Set window attributes
 root.title("Text to Speech")
 root.attributes('-fullscreen', True)
-# root.overrideredirect(True)
 
 root.mainloop()
