@@ -3,15 +3,20 @@ import tkinter.simpledialog as sd
 from playsound import playsound
 import argparse
 import subprocess
+import datetime
 import re
+import os
 
 parser = argparse.ArgumentParser(description='TTS Program for keyboard input.')
 parser.add_argument('--default_tts', action='store_true', help='Enable the use of default TTS engine (Espeak)')
 parser.add_argument('--arm', action='store_true', help='Specify if the processor is ARM for Piper.')
+parser.add_argument('--forget_audio', action='store_true', help='Conserve storage by not saving audio beyond the most reccent call.')
 args = parser.parse_args()
 
-IS_ARM = args.arm
 USE_DEFAULT_TTS = args.default_tts
+IS_ARM = args.arm
+FORGET_AUDIO = args.forget_audio
+
 SPEECH_TEXT = ""
 FONT_SIZE = 24
 BAR_COLOR = '#0098fc'
@@ -19,6 +24,7 @@ STATUS_TEXT_COLOR_GO = '#1fff0f'
 STATUS_TEXT_COLOR_STOP = '#fc444a'
 TEXT_COLOR = 'white'
 STATUS_TOGGLE = True
+DAYS_TO_KEEP = 3
 
 badChars = ["Left", "Right", "Up", "Down"]
 
@@ -193,11 +199,11 @@ else:
     Ctrl + H: Display this help text"""
         sd.messagebox.showinfo("Help", help_text)
 
-def play_tts(text):
+def play_tts(text, isFull):
     global USE_DEFAULT_TTS
     toggle_status()
-
     text = re.sub(r'[^a-zA-Z0-9 ,.?!@$%&*~\-+=/]', '', text)
+
     if modes[mode_id] == "Chess":
         pass
 
@@ -221,12 +227,19 @@ def play_tts(text):
         engine.say(text)
         engine.runAndWait()
     else:
-        command = f"echo \'{text}\' | ./piper"
-        if IS_ARM: command += "_arm"
-        command += f"/piper -m voices/{voices[voice_id][1]} --output_file output.wav"
-        print(command)
+        audio = "FULL_" if isFull else ""
+        if FORGET_AUDIO:
+            audio += "audio.wav"
+        else:
+            audio += datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S_audio.wav")
+        
+        command = f"echo \'{text}\' | ./piper" 
+        command += "_arm" if IS_ARM else ""
+        command += f"/piper -m voices/{voices[voice_id][1]} --output_file " + audio
+        print("Command: ", command, "\nSaved Audio as ", audio)
         subprocess.run(command, shell=True)
-        playsound('output.wav')
+        playsound(audio)
+
     toggle_status()
 
 def clear_text(event):
@@ -237,7 +250,7 @@ def exit_app(event):
     root.destroy()
 
 def play_all_text(event):
-    play_tts(text_box.get("1.0", "end-1c"))
+    play_tts(text_box.get("1.0", "end-1c"), True)
 
 def toggle_status():
     global STATUS_TOGGLE
@@ -250,6 +263,27 @@ def toggle_status():
 
 def decimal_to_integer(number):
     return int(str(number).split('.')[1])
+
+def delete_old_wav_files(): # Remove them if older than X weeks
+    if DAYS_TO_KEEP <= 0: # If invalid, delete all
+        for file_name in os.listdir('.'):
+            if file_name.endswith('.wav'):
+                file_path = os.path.join(os.getcwd(), file_name)
+                os.remove(file_path)
+    else:
+        current_time = datetime.datetime.now()
+        normal_days_keep = current_time - datetime.timedelta(days=DAYS_TO_KEEP)
+        fullMultiplier = 1
+
+        for file_name in os.listdir('.'):
+            if file_name.endswith('.wav'):
+                if file_name.startswith('FULL'):
+                    fullMultiplier = 2
+                
+                file_path = os.path.join(os.getcwd(), file_name)
+                file_modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
+                if file_modified_time < normal_days_keep * fullMultiplier:
+                    os.remove(file_path)
 
 # Define a function to handle key presses
 def on_key_press(event):
@@ -281,13 +315,15 @@ def on_key_press(event):
                 
                 # Play audio if termination of line character found
                 if text in [",", ".", "?", "!"]:
-                    play_tts(SPEECH_TEXT)
+                    play_tts(SPEECH_TEXT, False)
                     SPEECH_TEXT = ''
             else:
                 printDebug = False
         
         if printDebug:
             print("Current SPEECH_TEXT: ", SPEECH_TEXT)
+
+delete_old_wav_files()
 
 # Create the main window, and initialize sound
 root = tk.Tk()
