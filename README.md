@@ -4,6 +4,7 @@ A Text to Speech app which runs on Linux x86 and ARM systems (such as Raspberry 
 
 ![TTSAPP](https://user-images.githubusercontent.com/101217869/233815513-575ebfd4-f8be-4492-b853-67456042255b.gif)
 
+_Author: Jacob Hansen_
 _TTS Engine provided by Piper: https://github.com/rhasspy/piper_
 
 ## Installation:
