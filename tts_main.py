@@ -4,7 +4,6 @@ import subprocess
 import datetime
 import argparse
 import pygame
-import os
 import re
 
 import tts_sound
@@ -22,6 +21,8 @@ FORGET_AUDIO = args.forget_audio
 
 SPEECH_TEXT = ""
 FONT_SIZE = 24
+TEXT_PADDING = 4
+RATE_CAP = 2.0
 BAR_COLOR = '#0098fc'
 STATUS_TEXT_COLOR_GO = '#1fff0f'
 STATUS_TEXT_COLOR_STOP = '#ff0008'
@@ -56,25 +57,9 @@ if USE_DEFAULT_TTS:
     # Define a function to update the displayed settings
     def update_settings():
         volume_label.config(text=f" Volume: {int(volume * 100)}")
-        rate_label.config(text=f"| Rate: {rate}")
+        rate_label.config(text=f"| Rate: x{rate}")
         voice_label.config(text=f"| Voice: {(voices[voice_id].name).capitalize()}")
         mode_label.config(text=f'Mode: {modes[mode_id]}')
-
-    def increment_volume(event):
-        global volume
-        volume += 0.1
-        if volume > 1.0:
-            volume = 1.0
-        engine.setProperty('volume', volume)
-        update_settings()
-
-    def decrement_volume(event):
-        global volume
-        volume -= 0.1
-        if volume < 0.0:
-            volume = 0.0
-        engine.setProperty('volume', volume)
-        update_settings()
 
     def increment_volume(event):
         global volume
@@ -149,25 +134,45 @@ if USE_DEFAULT_TTS:
         sd.messagebox.showinfo("Help", help_text)
 
 else:
+    volume = 1.0
+    rate = 1.0
     voice_id = 0    
     voices = tts_util.initialize_voices()
     
     # Define a function to update the displayed settings
     def update_settings():
-        voice_label.config(text=f"Voice: {voices[voice_id][0]}")
+        volume_label.config(text=f" Volume: {int(volume * 100)}")
+        rate_label.config(text=f"| Rate: x{rate:.1f}")
+        voice_label.config(text=f"| Voice: {voices[voice_id][0]}")
         mode_label.config(text=f'| Mode: {modes[mode_id]}')
 
     def increment_volume(event):
-        pass
+        global volume
+        volume += 0.1
+        if volume > 1.0:
+            volume = 1.0
+        update_settings()
 
     def decrement_volume(event):
-        pass
+        global volume
+        volume -= 0.1
+        if volume < 0.0:
+            volume = 0.0
+        update_settings()
 
     def increment_rate(event):
-        pass
-    
+        global rate
+        rate += 0.1
+        if rate > RATE_CAP:
+            rate = RATE_CAP
+        update_settings()
+
     def decrement_rate(event):
-        pass
+        global rate
+        rate -= 0.1
+        if rate < 0.1:
+            rate = 0.1
+        update_settings()
 
     def increment_voice(event):
         global voice_id
@@ -230,7 +235,10 @@ def play_tts(text, isFull):
     if USE_DEFAULT_TTS:
         engine.say(text)
         engine.runAndWait()
+        toggle_speech_status()
     else:
+        global volume, rate
+
         audio = "export_audio/" 
         audio += "FULL_" if isFull else ""
         audio += datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S_audio.wav") if not FORGET_AUDIO else "audio.wav"
@@ -240,16 +248,14 @@ def play_tts(text, isFull):
         command += f"/piper -m voices/{voices[voice_id][1]} --output_file " + audio
         print("Command: ", command, "\nSaved Audio as ", audio)
         subprocess.run(command, shell=True)
-        tts_sound.play_audio(audio)
-
-    toggle_speech_status()
+        tts_sound.play_audio(audio, volume, rate)
+        toggle_speech_status()
 
 def clear_text(event):
     SPEECH_TEXT = ''
     text_box.delete(1.0, tk.END)
 
 def exit_app(event):
-    pygame.mixer.quit()
     root.destroy()
 
 def play_all_text(event):
@@ -320,7 +326,6 @@ def set_last_char_color():
 
 # Create the main window, and initialize sound
 root = tk.Tk()
-pygame.mixer.init()
 
 # Create the text box
 text_box = tk.Text(root, font=('Helvetica', FONT_SIZE, 'normal'))
@@ -330,16 +335,16 @@ text_box.focus()
 
 # Create the frame for the settings
 settings_frame = tk.Frame(root)
-settings_frame.config(bg=BAR_COLOR)
+settings_frame.config(bg=BAR_COLOR, height=30)
 settings_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
 # Create the labels for the settings
-volume_label = tk.Label(settings_frame, bg=BAR_COLOR, fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
-rate_label = tk.Label(settings_frame, bg=BAR_COLOR,fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
-voice_label = tk.Label(settings_frame, bg=BAR_COLOR, fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
-mode_label = tk.Label(settings_frame, bg=BAR_COLOR,fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
-status_label = tk.Label(settings_frame, bg=BAR_COLOR,fg=STATUS_TEXT_COLOR_STOP, text=f"", font=('Helvetica', 16, 'normal'))
-help_label = tk.Label(settings_frame, bg=BAR_COLOR,fg=TEXT_BACKGROUND_COLOR, text="Ctrl + H to display actions ", font=('Helvetica', 16, 'normal'))
+volume_label = tk.Label(settings_frame, pady=TEXT_PADDING, bg=BAR_COLOR, fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
+rate_label = tk.Label(settings_frame, pady=TEXT_PADDING, bg=BAR_COLOR,fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
+voice_label = tk.Label(settings_frame, pady=TEXT_PADDING, bg=BAR_COLOR, fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
+mode_label = tk.Label(settings_frame, pady=TEXT_PADDING, bg=BAR_COLOR,fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
+status_label = tk.Label(settings_frame, pady=TEXT_PADDING, bg=BAR_COLOR,fg=STATUS_TEXT_COLOR_STOP, text=f"", font=('Helvetica', 16, 'normal'))
+help_label = tk.Label(settings_frame, pady=TEXT_PADDING, bg=BAR_COLOR,fg=TEXT_BACKGROUND_COLOR, text="Ctrl + H to display actions ", font=('Helvetica', 16, 'normal'))
 
 update_settings()
 toggle_speech_status()
