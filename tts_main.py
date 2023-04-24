@@ -202,7 +202,6 @@ else:
     # Define a function to display the help text
     def display_help():
         help_text = """Available commands:
-
     Ctrl + Q: Clear the text box
     Ctrl + D: Increment Voice (forward)
     Ctrl + C: Decrement Voice (backward)
@@ -291,16 +290,12 @@ def delete_old_wav_files(): # Remove them if older than X weeks
                 os.remove(file_path)
     else:
         normal_days_keep = datetime.datetime.now() - datetime.timedelta(days=DAYS_TO_KEEP)
-        fullMultiplier = 1
 
         for file_name in os.listdir(export_audio_dir):
-            if file_name.endswith('.wav'):
-                if file_name.startswith('FULL'):
-                    fullMultiplier = 2
-                
+            if file_name.endswith('.wav'):               
                 file_path = os.path.join(export_audio_dir, file_name)
                 file_modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-                if file_modified_time < normal_days_keep * fullMultiplier:
+                if file_modified_time < normal_days_keep:
                     os.remove(file_path)
 
 def delete_old_text_files(): # Remove them if older than X weeks
