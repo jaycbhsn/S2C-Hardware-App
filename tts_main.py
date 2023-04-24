@@ -1,11 +1,14 @@
 import tkinter.simpledialog as sd
 import tkinter as tk
-from playsound import playsound
 import subprocess
 import datetime
 import argparse
-import re
+import pygame
 import os
+import re
+
+import tts_sound
+import tts_util
 
 parser = argparse.ArgumentParser(description='TTS Program for keyboard input.')
 parser.add_argument('--default_tts', action='store_true', help='Enable the use of default TTS engine (Espeak)')
@@ -21,9 +24,9 @@ SPEECH_TEXT = ""
 FONT_SIZE = 24
 BAR_COLOR = '#0098fc'
 STATUS_TEXT_COLOR_GO = '#1fff0f'
-STATUS_TEXT_COLOR_STOP = '#fc444a'
-TEXT_COLOR = 'white'
-STATUS_TOGGLE = True
+STATUS_TEXT_COLOR_STOP = '#ff0008'
+TEXT_BACKGROUND_COLOR = 'white'
+STATUS_TOGGLE = False
 DAYS_TO_KEEP = 3
 
 badChars = ["Left", "Right", "Up", "Down"]
@@ -36,12 +39,7 @@ modes = [
     "Chess"
 ]
 
-# Check if important directories do not exist
-if not os.path.exists('export_audio'):
-    os.makedirs('export_audio')
-
-if not os.path.exists('export_text'):
-    os.makedirs('export_text')
+tts_util.create_dirs()
 
 # Define functions to increment or decrement the settings based on keyboard shortcuts
 if USE_DEFAULT_TTS:
@@ -151,15 +149,8 @@ if USE_DEFAULT_TTS:
         sd.messagebox.showinfo("Help", help_text)
 
 else:
-    if not os.path.exists('voices'):
-        print("Error: \'voices\' could not be found.\nYou do not have any voices installed.\nMake sure to follow the installation instructions or use \'--default_tts\' if you have Espeak installed.")
-        exit(0)
-
-    voice_id = 0
-    with open("voices/avaliable_voices.txt", "r") as f:
-        lines = f.readlines()
-    
-    voices = [tuple(line.strip().split(":")) for line in lines]
+    voice_id = 0    
+    voices = tts_util.initialize_voices()
     
     # Define a function to update the displayed settings
     def update_settings():
@@ -214,7 +205,7 @@ else:
 
 def play_tts(text, isFull):
     global USE_DEFAULT_TTS
-    toggle_status()
+    toggle_speech_status()
     text = re.sub(r'[^a-zA-Z0-9 ,.?!@$%&*~\-+=/]', '', text)
 
     if modes[mode_id] == "Chess":
@@ -249,15 +240,16 @@ def play_tts(text, isFull):
         command += f"/piper -m voices/{voices[voice_id][1]} --output_file " + audio
         print("Command: ", command, "\nSaved Audio as ", audio)
         subprocess.run(command, shell=True)
-        playsound(audio)
+        tts_sound.play_audio(audio)
 
-    toggle_status()
+    toggle_speech_status()
 
 def clear_text(event):
     SPEECH_TEXT = ''
     text_box.delete(1.0, tk.END)
 
 def exit_app(event):
+    pygame.mixer.quit()
     root.destroy()
 
 def play_all_text(event):
@@ -268,54 +260,6 @@ def export_text(event):
         f.write(text_box.get("1.0", "end-1c"))
     f.close()
 
-def toggle_status():
-    global STATUS_TOGGLE
-    STATUS_TOGGLE = not STATUS_TOGGLE
-    if STATUS_TOGGLE:
-        status_label.config(fg=STATUS_TEXT_COLOR_GO, text=' GO')
-    else:
-        status_label.config(fg=STATUS_TEXT_COLOR_STOP, text=' STOP')
-    settings_frame.update()
-
-def decimal_to_integer(number):
-    return int(str(number).split('.')[1])
-
-def delete_old_wav_files(): # Remove them if older than X weeks
-    export_audio_dir = os.path.join(os.getcwd(), 'export_audio')
-
-    if DAYS_TO_KEEP <= 0: # If invalid, delete all
-        for file_name in os.listdir(export_audio_dir):
-            if file_name.endswith('.wav'):
-                file_path = os.path.join(export_audio_dir, file_name)
-                os.remove(file_path)
-    else:
-        normal_days_keep = datetime.datetime.now() - datetime.timedelta(days=DAYS_TO_KEEP)
-
-        for file_name in os.listdir(export_audio_dir):
-            if file_name.endswith('.wav'):               
-                file_path = os.path.join(export_audio_dir, file_name)
-                file_modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-                if file_modified_time < normal_days_keep:
-                    os.remove(file_path)
-
-def delete_old_text_files(): # Remove them if older than X weeks
-    export_text_dir = os.path.join(os.getcwd(), 'export_text')
-    if DAYS_TO_KEEP <= 0: # If invalid, delete all
-        for file_name in os.listdir(export_text_dir):
-            if file_name.endswith('.txt'):
-                file_path = os.path.join(export_text_dir, file_name)
-                os.remove(file_path)
-    else:
-        normal_days_keep = datetime.datetime.now() - datetime.timedelta(days=DAYS_TO_KEEP)
-
-        for file_name in os.listdir(export_text_dir):
-            if file_name.endswith('.txt'):  
-                file_path = os.path.join(export_text_dir, file_name)
-                file_modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-                if file_modified_time < normal_days_keep:
-                    os.remove(file_path)
-
-
 # Define a function to handle key presses
 def on_key_press(event):
     global SPEECH_TEXT
@@ -323,7 +267,8 @@ def on_key_press(event):
 
     # Capture the text from the key press and add it to the text box
     if not (event.state & 0x4): # If control is not being pressed
-        cursor_pos = decimal_to_integer(text_box.index(tk.INSERT))
+        cursor_pos = tts_util.decimal_to_integer(text_box.index(tk.INSERT))
+        # print("POS: ", text_box.index(tk.INSERT))
         text = event.char
 
         if text == '\x08': # Handle Backspaces for the current line
@@ -335,6 +280,9 @@ def on_key_press(event):
             if SPEECH_TEXT != '' and cursor_pos < len(SPEECH_TEXT) - 1:
                 SPEECH_TEXT = SPEECH_TEXT[:cursor_pos] + SPEECH_TEXT[cursor_pos+1:]
                 print("Removed character at Position: ", cursor_pos)
+
+        elif text == '\t':
+            pass
 
         else: # Handle other keys
             if event.keysym not in badChars:
@@ -354,11 +302,29 @@ def on_key_press(event):
         if printDebug:
             print("Current SPEECH_TEXT: ", SPEECH_TEXT)
 
+# Defines if the app is currently speaking
+def toggle_speech_status():
+    global STATUS_TOGGLE
+    STATUS_TOGGLE = not STATUS_TOGGLE
+    if STATUS_TOGGLE:
+        status_label.config(fg=STATUS_TEXT_COLOR_GO, text=' GO')
+    else:
+        status_label.config(fg=STATUS_TEXT_COLOR_STOP, text=' CTRL TO STOP')
+    settings_frame.update()
+
+# Sets character behind the cursor to a specified color
+def set_last_char_color():
+    text_box.tag_remove("last_char_color", "1.0", tk.END)
+    text_box.tag_add("last_char_color", "insert-1c", "insert")
+    text_box.after(70, set_last_char_color)
+
 # Create the main window, and initialize sound
 root = tk.Tk()
+pygame.mixer.init()
 
 # Create the text box
 text_box = tk.Text(root, font=('Helvetica', FONT_SIZE, 'normal'))
+text_box.tag_config("last_char_color", foreground='#ff0008') # set color for the tag
 text_box.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 text_box.focus()
 
@@ -368,17 +334,19 @@ settings_frame.config(bg=BAR_COLOR)
 settings_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
 # Create the labels for the settings
-volume_label = tk.Label(settings_frame, bg=BAR_COLOR, fg=TEXT_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
-rate_label = tk.Label(settings_frame, bg=BAR_COLOR,fg=TEXT_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
-voice_label = tk.Label(settings_frame, bg=BAR_COLOR, fg=TEXT_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
-mode_label = tk.Label(settings_frame, bg=BAR_COLOR,fg=TEXT_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
+volume_label = tk.Label(settings_frame, bg=BAR_COLOR, fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
+rate_label = tk.Label(settings_frame, bg=BAR_COLOR,fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
+voice_label = tk.Label(settings_frame, bg=BAR_COLOR, fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
+mode_label = tk.Label(settings_frame, bg=BAR_COLOR,fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
 status_label = tk.Label(settings_frame, bg=BAR_COLOR,fg=STATUS_TEXT_COLOR_STOP, text=f"", font=('Helvetica', 16, 'normal'))
-help_label = tk.Label(settings_frame, bg=BAR_COLOR,fg=TEXT_COLOR, text="Ctrl + H to display actions ", font=('Helvetica', 16, 'normal'))
+help_label = tk.Label(settings_frame, bg=BAR_COLOR,fg=TEXT_BACKGROUND_COLOR, text="Ctrl + H to display actions ", font=('Helvetica', 16, 'normal'))
 
 update_settings()
-toggle_status()
-delete_old_wav_files()
-delete_old_text_files()
+toggle_speech_status()
+set_last_char_color() # initialize the loop
+
+tts_util.delete_old_wav_files(DAYS_TO_KEEP)
+tts_util.delete_old_text_files(DAYS_TO_KEEP)
 
 # Pack the labels into the settings frame
 volume_label.pack(side=tk.LEFT)
@@ -399,7 +367,7 @@ root.bind("<Control-KeyPress-m>", increment_mode)
 root.bind("<Control-KeyPress-p>", play_all_text)
 root.bind("<Control-KeyPress-q>", clear_text)
 root.bind("<Control-KeyPress-o>", export_text)
-root.bind("<Control-h>", lambda event: display_help())
+root.bind("<Control-KeyPress-h>", lambda event: display_help())
 root.bind("<Control-BackSpace>", exit_app)
 root.bind("<Control-Delete>", exit_app)
 
