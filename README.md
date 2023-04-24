@@ -10,7 +10,7 @@ _TTS Engine provided by Piper: https://github.com/rhasspy/piper_
 
 ## Installation:
 
-First, install the required packages with pip, and run this on Python 3.7 or later (This was built on Python 3.10):
+First, install the required packages with pip, and run this on Python 3.7 or later **AS ROOT/with sudo** (This was built on Python 3.10):
 ```
 wget https://github.com/jaycbhsn/S2C-Hardware-App/raw/main/requirements.txt
 pip install -r requirements.txt
