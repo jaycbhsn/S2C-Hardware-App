@@ -8,6 +8,11 @@ A Text to Speech app which runs on Linux x86 and ARM systems (such as Raspberry 
 
 _TTS Engine provided by Piper: https://github.com/rhasspy/piper_
 
+**Versions 0.1.1 and later require ffmpeg to be installed. To install it, use the following command with superuser privilege:**
+```
+apt install ffmpeg
+```
+
 ## Installation:
 
 First, install the required packages with pip, and run this on Python 3.7 or later **AS ROOT/with sudo** (This was built on Python 3.10):
