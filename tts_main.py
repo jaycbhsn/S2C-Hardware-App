@@ -18,7 +18,6 @@ USE_DEFAULT_TTS = args.default_tts
 IS_ARM = args.arm
 FORGET_AUDIO = args.forget_audio
 
-SPEECH_TEXT = ""
 FONT_SIZE = 24
 TEXT_PADDING = 4
 MAX_RATE = 2.0
@@ -201,6 +200,7 @@ else:
     Ctrl + C: Decrement Voice (backward)
     Ctrl + M: Increment Mode
     Ctrl + P: Play All Text
+    Ctrl + L: Play Current Line
     Ctrl + O: Export Text
     Ctrl + Backspace/Delete: Exit Program
     Ctrl + H: Display this help text"""
@@ -250,11 +250,18 @@ def play_tts(text, isFull):
         toggle_speech_status()
 
 def clear_text(event):
-    SPEECH_TEXT = ''
     text_box.delete(1.0, tk.END)
 
 def exit_app(event):
     root.destroy()
+
+def play_line(event):
+    index = text_box.index(tk.INSERT)
+    line_start = text_box.index(f"{index} linestart")
+    line_end = text_box.index(f"{index} lineend")
+    current_line = text_box.get(line_start, line_end)
+    play_tts(current_line, False)
+    print("Line spoken: ", current_line)
 
 def play_all_text(event):
     play_tts(text_box.get("1.0", "end-1c"), True)
@@ -269,45 +276,15 @@ def export_text(event):
 
 # Define a function to handle key presses
 def on_key_press(event):
-    global SPEECH_TEXT
-    printDebug = True
-
     # Capture the text from the key press and add it to the text box
     if not (event.state & 0x4): # If control is not being pressed
-        cursor_pos = tts_util.decimal_to_integer(text_box.index(tk.INSERT))
-        # print("POS: ", text_box.index(tk.INSERT))
-        text = event.char
 
-        if text == '\x08': # Handle Backspaces for the current line
-            if SPEECH_TEXT != '' and cursor_pos > 0:
-                SPEECH_TEXT = SPEECH_TEXT[:cursor_pos-1] + SPEECH_TEXT[cursor_pos:] 
-                print("Removed character at Position: ", cursor_pos)
-
-        elif text == '\x7f': # Handle Delete for the current line
-            if SPEECH_TEXT != '' and cursor_pos < len(SPEECH_TEXT) - 1:
-                SPEECH_TEXT = SPEECH_TEXT[:cursor_pos] + SPEECH_TEXT[cursor_pos+1:]
-                print("Removed character at Position: ", cursor_pos)
-
-        elif text == '\t':
+        # Auto complete word? TBD if should be added
+        if event.char == '\t':
             pass
-
-        else: # Handle other keys
-            if event.keysym not in ["Left", "Right", "Up", "Down"]:
-                print("Key pressed:", text)
-                if cursor_pos != len(SPEECH_TEXT): 
-                    SPEECH_TEXT = SPEECH_TEXT[:cursor_pos] + text + SPEECH_TEXT[cursor_pos:]
-                else:
-                    SPEECH_TEXT += text
-                
-                # Play audio if termination of line character found
-                if text in [",", ".", "?", "!"]:
-                    play_tts(SPEECH_TEXT, False)
-                    SPEECH_TEXT = ''
-            else:
-                printDebug = False
-        
-        if printDebug:
-            print("Current SPEECH_TEXT: ", SPEECH_TEXT)
+        else:  
+            if event.char in [",", ".", "?", "!", ";"]: # Play audio if termination of line character found
+                play_line(event)
 
 # Defines if the app is currently speaking
 def toggle_speech_status():
@@ -371,6 +348,7 @@ root.bind("<Control-KeyPress-d>", increment_voice)
 root.bind("<Control-KeyPress-c>", decrement_voice)
 root.bind("<Control-KeyPress-m>", increment_mode)
 root.bind("<Control-KeyPress-p>", play_all_text)
+root.bind("<Control-KeyPress-l>", play_line)
 root.bind("<Control-KeyPress-q>", clear_text)
 root.bind("<Control-KeyPress-o>", export_text)
 root.bind("<Control-KeyPress-h>", lambda event: display_help())
