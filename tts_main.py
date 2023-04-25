@@ -3,7 +3,6 @@ import tkinter as tk
 import subprocess
 import datetime
 import argparse
-import pygame
 import re
 
 import tts_sound
@@ -22,15 +21,14 @@ FORGET_AUDIO = args.forget_audio
 SPEECH_TEXT = ""
 FONT_SIZE = 24
 TEXT_PADDING = 4
-RATE_CAP = 2.0
+MAX_RATE = 2.0
+MIN_RATE = 0.5
 BAR_COLOR = '#0098fc'
 STATUS_TEXT_COLOR_GO = '#1fff0f'
 STATUS_TEXT_COLOR_STOP = '#ff0008'
 TEXT_BACKGROUND_COLOR = 'white'
 STATUS_TOGGLE = False
 DAYS_TO_KEEP = 3
-
-badChars = ["Left", "Right", "Up", "Down"]
 
 # Used to give context from text
 mode_id = 0
@@ -136,7 +134,7 @@ if USE_DEFAULT_TTS:
 else:
     volume = 1.0
     rate = 1.0
-    voice_id = 0    
+    voice_id = 0
     voices = tts_util.initialize_voices()
     
     # Define a function to update the displayed settings
@@ -163,15 +161,15 @@ else:
     def increment_rate(event):
         global rate
         rate += 0.1
-        if rate > RATE_CAP:
-            rate = RATE_CAP
+        if rate > MAX_RATE:
+            rate = MAX_RATE
         update_settings()
 
     def decrement_rate(event):
         global rate
         rate -= 0.1
-        if rate < 0.1:
-            rate = 0.1
+        if rate < MIN_RATE:
+            rate = MIN_RATE
         update_settings()
 
     def increment_voice(event):
@@ -262,8 +260,11 @@ def play_all_text(event):
     play_tts(text_box.get("1.0", "end-1c"), True)
 
 def export_text(event):
+    text = text_box.get("1.0", "end-1c")
+    # Currently not done...
+    # if not tts_util.write_to_usb(text)):
     with open(datetime.datetime.now().strftime("export_text/%Y-%m-%d_%H:%M:%S_text.txt"), "w") as f:
-        f.write(text_box.get("1.0", "end-1c"))
+        f.write(text)
     f.close()
 
 # Define a function to handle key presses
@@ -291,7 +292,7 @@ def on_key_press(event):
             pass
 
         else: # Handle other keys
-            if event.keysym not in badChars:
+            if event.keysym not in ["Left", "Right", "Up", "Down"]:
                 print("Key pressed:", text)
                 if cursor_pos != len(SPEECH_TEXT): 
                     SPEECH_TEXT = SPEECH_TEXT[:cursor_pos] + text + SPEECH_TEXT[cursor_pos:]
