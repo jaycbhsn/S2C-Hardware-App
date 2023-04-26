@@ -27,6 +27,10 @@ su
 wget https://github.com/jaycbhsn/S2C-Hardware-App/raw/main/requirements.txt
 pip install -r requirements.txt
 ```
+You will also need Tkinter to run the GUI. To install it, run the following command:
+```
+sudo apt install python3-tk
+```
 
 Once the requirements are installed, hollow the instructions for the most up to date release or an older release if you prefer:
 
