@@ -4,6 +4,7 @@ import subprocess
 import datetime
 import argparse
 import re
+import os
 
 import tts_sound
 import tts_util
@@ -282,7 +283,7 @@ def on_key_press(event):
         # Auto complete word? TBD if should be added
         if event.char == '\t':
             pass
-        else:  
+        else:
             if event.char in [",", ".", "?", "!", ";"]: # Play audio if termination of line character found
                 play_line(event)
 
@@ -308,13 +309,17 @@ root = tk.Tk()
 # Create the text box
 text_box = tk.Text(root, font=('Helvetica', FONT_SIZE, 'normal'))
 text_box.tag_config("last_char_color", foreground='#ff0008') # set color for the tag
-text_box.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+text_box.grid(row=0, column=0, sticky='nsew')
 text_box.focus()
+text_box.lower()
 
 # Create the frame for the settings
 settings_frame = tk.Frame(root)
-settings_frame.config(bg=BAR_COLOR, height=30)
-settings_frame.pack(side=tk.BOTTOM, fill=tk.X)
+settings_frame.config(bg=BAR_COLOR, width=root.winfo_screenwidth(), height=30)
+settings_frame.grid(row=1, column=0, sticky='ew')
+
+root.grid_rowconfigure(0, weight=1)
+root.grid_columnconfigure(0, weight=1)
 
 # Create the labels for the settings
 volume_label = tk.Label(settings_frame, pady=TEXT_PADDING, bg=BAR_COLOR, fg=TEXT_BACKGROUND_COLOR, text=f"", font=('Helvetica', 16, 'normal'))
@@ -360,6 +365,16 @@ text_box.bind("<Key>", on_key_press)
 
 # Set window attributes
 root.title("Text to Speech")
+root.attributes('-topmost', 1)
 root.attributes('-fullscreen', True)
+
+# Move the labels to the top
+settings_frame.lift()
+volume_label.lift()
+rate_label.lift()
+voice_label.lift()
+mode_label.lift()
+status_label.lift()
+help_label.lift()
 
 root.mainloop()
